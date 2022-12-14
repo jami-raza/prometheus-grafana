@@ -10,13 +10,13 @@ const { counter } = require('./counter');
 const register = new client.Registry();
 
 // Add a default metrics and enable the collection of it
-client.collectDefaultMetrics({
-  app: 'node-application-monitoring-app',
-  prefix: 'node_',
-  timeout: 10000,
-  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5], // These are the default buckets.
-  register
-});
+// client.collectDefaultMetrics({
+//   app: 'node-application-monitoring-app',
+//   prefix: 'node_',
+//   timeout: 10000,
+//   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5], // These are the default buckets.
+//   register
+// });
 
 // Create a histogram metric
 const httpRequestDurationMicroseconds = new client.Histogram({
@@ -43,6 +43,18 @@ summary(register);
 // counter
 counter(register);
 
+// Create a histogram metric
+const checkHistogram = new client.Histogram({
+  name: 'check_histogram',
+  help: 'This is check histogram',
+  labelNames: ['value'],
+});
+
+// Register the histogram
+register.registerMetric(httpRequestDurationMicroseconds);
+register.registerMetric(checkHistogram);
+
+
 // Handlers
 const createDelayHandler = async (req, res) => {
   if ((Math.floor(Math.random() * 100)) === 0) {
@@ -50,7 +62,7 @@ const createDelayHandler = async (req, res) => {
   }
 
   // delay for 3-6 seconds
-  const delaySeconds = Math.floor(Math.random() * (6 - 3)) + 3
+  const delaySeconds = 25 + 3
   await new Promise(res => setTimeout(res, delaySeconds * 1000))
 
   res.end('Slow url accessed !!');
@@ -77,6 +89,17 @@ app.get('/slow', async (req, res) => {
 
   // End timer and add labels
   end({ route, code: res.statusCode, method: req.method });
+}); 
+
+
+app.get('/', async (req, res) => {
+  const end = checkHistogram.startTimer();
+  setTimeout(() => {
+    res.send('welcome')
+    end({value:12})
+  }, 1000);
+  // Start the timer
+  
 });
 
 // Start the Express server and listen to a port
